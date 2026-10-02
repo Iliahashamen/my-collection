@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>My Collection</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="gate" class="gate" hidden>
+      <h1>Open from Telegram</h1>
+      <p id="gate-message">Open this from the Telegram bot.</p>
+    </div>
+
+    <main id="app" hidden>
+      <header class="summary">
+        <div>
+          <span class="summary-label">Total value</span>
+          <strong id="total-value" class="summary-value">&mdash;</strong>
+        </div>
+        <div class="summary-count"><span id="item-count">0</span> items</div>
+      </header>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search" />
+        <select id="sort" aria-label="Sort by">
+          <option value="created">Newest</option>
+          <option value="value">Highest value</option>
+          <option value="title">Title A-Z</option>
+        </select>
+      </div>
+
+      <section id="items" class="items"></section>
+
+      <p id="empty" class="empty" hidden>Nothing here yet. Tap <strong>+</strong> to add your first item.</p>
+      <p id="list-error" class="error" hidden></p>
+
+      <button id="add" class="fab" type="button" aria-label="Add item">+</button>
+    </main>
+
+    <div id="editor" class="editor" hidden>
+      <form id="editor-form" class="sheet">
+        <h2 id="editor-title">New item</h2>
+
+        <label class="photo-picker">
+          <input id="photo-input" type="file" accept="image/*" hidden />
+          <img id="photo-preview" alt="" hidden />
+          <span id="photo-placeholder" class="photo-placeholder">Tap to add a photo</span>
+        </label>
+        <p id="photo-note" class="hint" hidden></p>
+        <button id="remove-photo" class="link-button" type="button" hidden>Remove photo</button>
+
+        <label class="field">
+          <span>Title</span>
+          <input id="field-title" name="title" type="text" maxlength="120" required />
+        </label>
+
+        <label class="field">
+          <span>Value (<span class="currency-label"></span>)</span>
+          <input id="field-value" name="value" type="text" inputmode="decimal" placeholder="0" />
+        </label>
+
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="field-note" name="note" rows="3" maxlength="600"></textarea>
+        </label>
+
+        <p id="editor-error" class="error" hidden></p>
+
+        <div class="actions">
+          <button id="save" class="primary" type="submit">Save</button>
+          <button id="cancel" class="secondary" type="button">Cancel</button>
+        </div>
+        <button id="delete" class="danger" type="button" hidden>Delete item</button>
+      </form>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
