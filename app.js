@@ -1,5 +1,25 @@
-import { ValidationError, filterSort, formatMoney, newItemId, parseNote, parseTitle, parseValue, totalValue } from './model.js';
-import { deleteItem, getPhoto, isSynced, listItems, putPhoto, saveItem } from './store.js';
+import {
+  MAX_SYNC_PHOTO_CHARS,
+  ValidationError,
+  filterSort,
+  formatMoney,
+  newItemId,
+  parseNote,
+  parseTitle,
+  parseValue,
+  totalValue
+} from './model.js';
+import {
+  deleteItem,
+  deleteSyncPhoto,
+  getPhoto,
+  getSyncPhoto,
+  isSynced,
+  listItems,
+  putPhoto,
+  putSyncPhoto,
+  saveItem
+} from './store.js';
 
 const tg = window.Telegram?.WebApp;
 
@@ -8,14 +28,16 @@ const state = {
   editing: null,
   pendingPhoto: null,
   pendingThumb: null,
+  pendingSyncPhoto: null,
   removePhoto: false
 };
 
 const el = id => document.getElementById(id);
 const ui = {
   gate: el('gate'),
-  gateMessage: el('gate-message'),
+  gateContinue: el('gate-continue'),
   app: el('app'),
+  syncState: el('sync-state'),
   totalValue: el('total-value'),
   itemCount: el('item-count'),
   search: el('search'),
@@ -55,6 +77,38 @@ async function makeThumbnail(file, maxChars = 3200) {
   const context = canvas.getContext('2d');
 
   for (const [side, quality] of [[128, 0.6], [112, 0.55], [96, 0.5], [80, 0.45], [64, 0.4]]) {
+    const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    if (dataUrl.length <= maxChars) {
+      bitmap.close?.();
+      return dataUrl;
+    }
+  }
+
+  bitmap.close?.();
+  return null;
+}
+
+/**
+ * Renders the largest photo that still fits the CloudStorage chunk budget, so
+ * the picture itself reaches your other device rather than just a thumbnail.
+ */
+async function makeSyncPhoto(file, maxChars = MAX_SYNC_PHOTO_CHARS) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return null;
+  }
+
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+
+  for (const [side, quality] of [[720, 0.72], [640, 0.68], [560, 0.62], [480, 0.58], [400, 0.5]]) {
     const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -167,6 +221,7 @@ async function openEditor(item) {
   state.editing = item ?? null;
   state.pendingPhoto = null;
   state.pendingThumb = null;
+  state.pendingSyncPhoto = null;
   state.removePhoto = false;
 
   ui.editorTitle.textContent = item ? 'Amend asset record' : 'New asset record';
@@ -185,14 +240,24 @@ async function openEditor(item) {
 
   if (!item?.hasPhoto) return;
 
-  // Prefer the full image, which only exists on the device that added it.
+  // Best available image, in order: the full original on the device that took
+  // it, then the synced copy, then the thumbnail already on screen.
   const blob = await getPhoto(item.id).catch(() => null);
   if (blob) {
     setPhotoPreview(URL.createObjectURL(blob));
-  } else {
-    ui.photoNote.textContent = 'Full photo is on the device where you added it. The thumbnail syncs everywhere.';
-    ui.photoNote.hidden = false;
+    return;
   }
+
+  const synced = await getSyncPhoto(item.id, item.syncChunks).catch(() => null);
+  if (synced) {
+    setPhotoPreview(synced);
+    return;
+  }
+
+  ui.photoNote.textContent = item.syncChunks
+    ? 'Synced photo is still arriving. Pull to reload in a moment.'
+    : 'This photo was saved before syncing existed. Re-attach it to copy it to your other device.';
+  ui.photoNote.hidden = false;
 }
 
 function closeEditor() {
@@ -200,6 +265,7 @@ function closeEditor() {
   state.editing = null;
   state.pendingPhoto = null;
   state.pendingThumb = null;
+  state.pendingSyncPhoto = null;
   tg?.BackButton?.hide();
 }
 
@@ -219,6 +285,7 @@ async function submitEditor(event) {
       value: parseValue(ui.fieldValue.value),
       thumb: editing?.thumb ?? null,
       hasPhoto: editing?.hasPhoto ?? false,
+      syncChunks: editing?.syncChunks ?? 0,
       createdAt: editing?.createdAt ?? now,
       updatedAt: now
     };
@@ -226,9 +293,17 @@ async function submitEditor(event) {
     if (state.pendingPhoto) {
       item.thumb = state.pendingThumb;
       item.hasPhoto = true;
+      // Clear the old chunks first, or a shorter replacement leaves a tail of
+      // orphans eating the key quota.
+      if (editing?.syncChunks) await deleteSyncPhoto(item.id);
+      // Chunks must land before the record, so no device ever reads a record
+      // promising more chunks than exist.
+      item.syncChunks = state.pendingSyncPhoto ? await putSyncPhoto(item.id, state.pendingSyncPhoto) : 0;
     } else if (state.removePhoto) {
       item.thumb = null;
       item.hasPhoto = false;
+      item.syncChunks = 0;
+      await deleteSyncPhoto(item.id);
     }
 
     await saveItem(item);
@@ -284,12 +359,20 @@ ui.photoInput.addEventListener('change', async () => {
   ui.photoNote.hidden = false;
   try {
     state.pendingThumb = await makeThumbnail(file);
+    state.pendingSyncPhoto = isSynced ? await makeSyncPhoto(file) : null;
     state.pendingPhoto = await downscaleForDevice(file);
     state.removePhoto = false;
     ui.removePhoto.hidden = false;
     setPhotoPreview(URL.createObjectURL(state.pendingPhoto));
-    ui.photoNote.hidden = Boolean(state.pendingThumb);
-    if (!state.pendingThumb) ui.photoNote.textContent = 'This photo will stay on this device only.';
+
+    if (state.pendingSyncPhoto) {
+      ui.photoNote.textContent = 'Full quality here, synced copy on your other devices.';
+    } else if (isSynced) {
+      ui.photoNote.textContent = 'Photo is too large to sync. It stays on this device.';
+    } else {
+      ui.photoNote.textContent = 'Opened outside Telegram, so this photo stays on this device.';
+    }
+    ui.photoNote.hidden = false;
   } finally {
     ui.save.disabled = false;
   }
@@ -298,6 +381,7 @@ ui.photoInput.addEventListener('change', async () => {
 ui.removePhoto.addEventListener('click', () => {
   state.pendingPhoto = null;
   state.pendingThumb = null;
+  state.pendingSyncPhoto = null;
   state.removePhoto = true;
   ui.photoInput.value = '';
   ui.removePhoto.hidden = true;
@@ -313,6 +397,14 @@ ui.search.addEventListener('input', () => {
 ui.sort.addEventListener('change', render);
 tg?.BackButton?.onClick(closeEditor);
 
+function openRegistry() {
+  ui.gate.hidden = true;
+  ui.app.hidden = false;
+  ui.syncState.textContent = isSynced ? 'Synced' : 'Local only';
+  ui.syncState.classList.toggle('local', !isSynced);
+  refresh();
+}
+
 function start() {
   for (const node of document.querySelectorAll('.currency-label')) node.textContent = '₪';
 
@@ -321,15 +413,17 @@ function start() {
     tg.expand();
   }
 
-  const standalone = ['localhost', '127.0.0.1'].includes(location.hostname);
-  if (!isSynced && !standalone) {
-    ui.gateMessage.textContent = 'Open this from the Telegram bot so your collection can sync across your devices.';
-    ui.gate.hidden = false;
+  // Inside Telegram the collection syncs, so go straight in. In a plain
+  // browser it cannot, so say so once and let the choice be explicit rather
+  // than locking the archive behind a wall.
+  if (isSynced) {
+    openRegistry();
     return;
   }
 
-  ui.app.hidden = false;
-  refresh();
+  ui.gate.hidden = false;
 }
+
+ui.gateContinue.addEventListener('click', openRegistry);
 
 start();

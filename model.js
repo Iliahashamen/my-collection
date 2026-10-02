@@ -11,6 +11,16 @@ export const MAX_VALUE_CHARS = 4096;
 export const MAX_ITEMS = 1000;
 export const ITEM_KEY_PREFIX = 'i_';
 
+/**
+ * A photo is far larger than one CloudStorage value, so it is split across
+ * numbered keys. The chunk budget is what rations the 1024-key allowance:
+ * 1 record + 8 chunks per item leaves room for roughly 110 photographed items.
+ */
+export const PHOTO_KEY_PREFIX = 'p_';
+export const PHOTO_CHUNK_CHARS = 4000;
+export const MAX_PHOTO_CHUNKS = 8;
+export const MAX_SYNC_PHOTO_CHARS = PHOTO_CHUNK_CHARS * MAX_PHOTO_CHUNKS;
+
 const MAX_TITLE = 120;
 const MAX_NOTE = 600;
 
@@ -32,6 +42,51 @@ export function isItemKey(key) {
 
 export function idFromKey(key) {
   return key.slice(ITEM_KEY_PREFIX.length);
+}
+
+export function photoChunkKey(id, index) {
+  return `${PHOTO_KEY_PREFIX}${id}_${index}`;
+}
+
+export function isPhotoKey(key) {
+  return typeof key === 'string' && key.startsWith(PHOTO_KEY_PREFIX);
+}
+
+export function photoIdFromKey(key) {
+  const rest = key.slice(PHOTO_KEY_PREFIX.length);
+  const split = rest.lastIndexOf('_');
+  return split === -1 ? rest : rest.slice(0, split);
+}
+
+/** Splits a data URL into CloudStorage-sized pieces. */
+export function splitPhoto(dataUrl) {
+  if (typeof dataUrl !== 'string' || dataUrl === '') throw new ValidationError('No photo to split.');
+  if (dataUrl.length > MAX_SYNC_PHOTO_CHARS) {
+    throw new ValidationError('Photo is too large to sync.');
+  }
+
+  const chunks = [];
+  for (let at = 0; at < dataUrl.length; at += PHOTO_CHUNK_CHARS) {
+    chunks.push(dataUrl.slice(at, at + PHOTO_CHUNK_CHARS));
+  }
+  return chunks;
+}
+
+/**
+ * Rebuilds a photo from stored chunks. Returns null on any gap, because half
+ * an image decodes to a broken picture rather than an obvious failure.
+ */
+export function joinPhoto(chunks) {
+  if (!Array.isArray(chunks) || chunks.length === 0) return null;
+  if (chunks.some(chunk => typeof chunk !== 'string' || chunk === '')) return null;
+  const joined = chunks.join('');
+  return joined.startsWith('data:image/') ? joined : null;
+}
+
+/** Orders `p_<id>_<n>` keys by their numeric suffix, not lexically. */
+export function sortChunkKeys(keys) {
+  const index = key => Number.parseInt(key.slice(key.lastIndexOf('_') + 1), 10);
+  return [...keys].sort((a, b) => index(a) - index(b));
 }
 
 export function parseTitle(raw) {
@@ -63,6 +118,9 @@ function serialise(item) {
   if (item.note) record.n = item.note;
   if (item.thumb) record.h = item.thumb;
   if (item.hasPhoto) record.p = 1;
+  // Chunk count travels with the record so any device knows exactly how many
+  // photo keys to ask for, and can tell a gap from a missing photo.
+  if (item.syncChunks) record.s = item.syncChunks;
   return record;
 }
 
@@ -90,6 +148,7 @@ export function decodeItem(key, json) {
     value: typeof record.v === 'number' ? record.v : 0,
     thumb: record.h ?? null,
     hasPhoto: record.p === 1,
+    syncChunks: Number.isInteger(record.s) && record.s > 0 ? record.s : 0,
     createdAt: record.c ?? null,
     updatedAt: record.u ?? record.c ?? null
   };

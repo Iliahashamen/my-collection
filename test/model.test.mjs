@@ -3,7 +3,9 @@
 import assert from 'node:assert/strict';
 
 import {
+  MAX_SYNC_PHOTO_CHARS,
   MAX_VALUE_CHARS,
+  PHOTO_CHUNK_CHARS,
   ValidationError,
   decodeItem,
   encodeItem,
@@ -11,11 +13,17 @@ import {
   formatMoney,
   idFromKey,
   isItemKey,
+  isPhotoKey,
   itemKey,
+  joinPhoto,
   newItemId,
   parseNote,
   parseTitle,
   parseValue,
+  photoChunkKey,
+  photoIdFromKey,
+  sortChunkKeys,
+  splitPhoto,
   totalValue
 } from '../model.js';
 
@@ -26,6 +34,7 @@ const base = {
   value: 1250.5,
   thumb: null,
   hasPhoto: false,
+  syncChunks: 0,
   createdAt: '2026-10-02T20:00:00.000Z',
   updatedAt: '2026-10-02T20:00:00.000Z'
 };
@@ -107,5 +116,46 @@ console.log('ok  totals, sorting, and search');
 assert.match(formatMoney(1250.5), /1,250\.5|1,250\.50|₪/, 'money renders with a currency');
 assert.equal(typeof formatMoney(0), 'string');
 console.log('ok  money formatting');
+
+// --- synced photo chunking --------------------------------------------------
+const photoId = 'z9y8x7';
+const chunkKey = photoChunkKey(photoId, 3);
+assert.ok(isPhotoKey(chunkKey));
+assert.ok(!isItemKey(chunkKey), 'photo keys must never be mistaken for item records');
+assert.equal(photoIdFromKey(chunkKey), photoId, 'the id is recovered even though it contains no underscore');
+assert.match(chunkKey, /^[A-Za-z0-9_-]{1,128}$/, 'chunk keys stay CloudStorage-safe');
+
+// Ten chunks sort numerically, not lexically: p_x_10 comes after p_x_9.
+const unordered = [9, 10, 1, 0, 11].map(n => photoChunkKey(photoId, n));
+assert.deepEqual(
+  sortChunkKeys(unordered).map(k => Number(k.slice(k.lastIndexOf('_') + 1))),
+  [0, 1, 9, 10, 11],
+  'chunk keys sort by number'
+);
+
+const photo = `data:image/jpeg;base64,${'Q'.repeat(PHOTO_CHUNK_CHARS * 2)}`;
+const chunks = splitPhoto(photo);
+assert.equal(chunks.length, 3, 'a photo spanning two chunk widths needs three keys');
+assert.ok(chunks.every(chunk => chunk.length <= PHOTO_CHUNK_CHARS), 'no chunk exceeds one value');
+assert.equal(joinPhoto(chunks), photo, 'chunks rejoin to the exact original');
+
+// A gap must read as "no photo" instead of a corrupt half-image.
+assert.equal(joinPhoto([chunks[0], undefined, chunks[2]]), null, 'a missing chunk yields null');
+assert.equal(joinPhoto([]), null);
+assert.equal(joinPhoto(['not-an-image-at-all']), null, 'non-image data is rejected');
+
+assert.throws(() => splitPhoto(''), ValidationError);
+assert.throws(
+  () => splitPhoto(`data:image/jpeg;base64,${'Q'.repeat(MAX_SYNC_PHOTO_CHARS)}`),
+  ValidationError,
+  'a photo over the chunk budget is refused rather than silently clipped'
+);
+console.log('ok  photos split and rejoin across CloudStorage keys');
+
+// A record carries its chunk count so other devices know what to fetch.
+const photographed = { ...base, hasPhoto: true, syncChunks: 6 };
+assert.equal(decodeItem(key, encodeItem(photographed)).syncChunks, 6);
+assert.equal(decodeItem(key, '{"t":"x","v":0,"s":-2}').syncChunks, 0, 'a nonsense chunk count is ignored');
+console.log('ok  chunk count survives the record round trip');
 
 console.log('\nAll model tests passed.');

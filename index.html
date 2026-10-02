@@ -15,8 +15,16 @@
   </head>
   <body>
     <div id="gate" class="gate" hidden>
-      <h1>Access Restricted</h1>
-      <p id="gate-message">Terminal must be opened through the authorised Telegram channel.</p>
+      <h1>Sync Channel Unavailable</h1>
+      <p>
+        This terminal is not running inside Telegram, so records cannot sync to your other devices.
+        Open it through the bot to keep phone and PC identical.
+      </p>
+      <div class="gate-actions">
+        <a class="primary" href="https://t.me/mpc_isr_bot">Open in Telegram</a>
+        <button id="gate-continue" class="secondary" type="button">Work locally</button>
+      </div>
+      <p class="gate-fineprint">Local records stay on this device only.</p>
     </div>
 
     <main id="app" hidden>
@@ -25,7 +33,10 @@
           <span class="summary-label">Total assessed value</span>
           <strong id="total-value" class="summary-value">&mdash;</strong>
         </div>
-        <div class="summary-count"><span id="item-count">0</span> on file</div>
+        <div class="summary-meta">
+          <div class="summary-count"><span id="item-count">0</span> on file</div>
+          <div id="sync-state" class="sync-state">Synced</div>
+        </div>
       </header>
 
       <div class="toolbar">

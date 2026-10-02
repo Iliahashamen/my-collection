@@ -49,7 +49,9 @@ body::before {
 /* ---- gate ---- */
 
 .gate {
-  padding: 64px 24px;
+  padding: 56px 24px;
+  margin: 0 auto;
+  max-width: 460px;
   text-align: center;
   color: var(--amber);
 }
@@ -65,6 +67,25 @@ body::before {
   color: var(--amber-dim);
   font-size: 14px;
   letter-spacing: 1px;
+}
+
+.gate-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.gate-actions > * {
+  flex: 1;
+  text-decoration: none;
+  text-align: center;
+  padding: 13px 10px;
+}
+
+.gate-fineprint {
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin-top: 18px;
 }
 
 /* ---- header / docket ---- */
@@ -104,6 +125,26 @@ body::before {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--amber-dim);
+}
+
+.summary-meta {
+  text-align: right;
+}
+
+.sync-state {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  color: var(--amber);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  display: inline-block;
+}
+
+.sync-state.local {
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .summary-label {
@@ -317,7 +358,7 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 100vh;
+  max-height: 100dvh;
   overflow-y: auto;
 }
 
@@ -390,9 +431,9 @@ body::before {
   margin-top: 2px;
 }
 
-button.primary,
-button.secondary,
-button.danger {
+.primary,
+.secondary,
+.danger {
   flex: 1;
   font-family: var(--mono);
   font-size: 12px;
@@ -404,20 +445,20 @@ button.danger {
   text-shadow: none;
 }
 
-button.primary {
+.primary {
   background: var(--amber);
   color: var(--shell);
   border: 1px solid var(--amber);
   font-weight: 700;
 }
 
-button.secondary {
+.secondary {
   background: transparent;
   color: var(--cream);
   border: 1px solid var(--line);
 }
 
-button.danger {
+.danger {
   background: transparent;
   color: var(--danger);
   border: 1px solid var(--danger);
@@ -441,6 +482,81 @@ button[disabled] {
   text-transform: uppercase;
   padding: 0 0 1px;
   cursor: pointer;
+}
+
+/* ---- fit the screen it is actually on ---- */
+
+/* Narrow phones: keep two columns rather than one oversized card. */
+@media (max-width: 380px) {
+  .items {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .summary,
+  .toolbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .summary-value {
+    font-size: 24px;
+  }
+}
+
+/* Tablet and desktop: cap the column so cards do not stretch across a
+   monitor, and centre the terminal like a single sheet of paper. */
+@media (min-width: 700px) {
+  body {
+    padding-bottom: 32px;
+  }
+
+  #app {
+    max-width: 960px;
+    margin: 0 auto;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    min-height: 100vh;
+  }
+
+  .items {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    padding: 18px 20px;
+  }
+
+  .summary,
+  .toolbar {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .summary-value {
+    font-size: 34px;
+  }
+
+  /* Anchor the action button to the sheet edge, not the far side of a
+     widescreen display. */
+  .fab {
+    right: max(20px, calc(50vw - 480px + 20px));
+    bottom: 28px;
+  }
+
+  /* A bottom sheet on a desktop reads as a mistake; centre it as a dialog. */
+  .editor {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .sheet {
+    max-width: 520px;
+    border: 1px solid var(--amber);
+    border-top-width: 2px;
+    max-height: calc(100vh - 48px);
+    padding-bottom: 22px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
