@@ -96,7 +96,7 @@ async function downscaleForDevice(file, maxSide = 1600, quality = 0.85) {
 function placeholderPhoto() {
   const node = document.createElement('div');
   node.className = 'card-photo placeholder';
-  node.textContent = '🖼';
+  node.textContent = 'NO IMAGE ON FILE';
   return node;
 }
 
@@ -169,7 +169,7 @@ async function openEditor(item) {
   state.pendingThumb = null;
   state.removePhoto = false;
 
-  ui.editorTitle.textContent = item ? 'Edit item' : 'New item';
+  ui.editorTitle.textContent = item ? 'Amend asset record' : 'New asset record';
   ui.fieldTitle.value = item?.title ?? '';
   ui.fieldValue.value = item ? String(item.value) : '';
   ui.fieldNote.value = item?.note ?? '';

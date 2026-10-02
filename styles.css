@@ -1,14 +1,17 @@
-/* Colours come from Telegram's theme variables so the app follows the user's
-   light/dark setting, with standalone-browser fallbacks after each var(). */
+/* TVA field terminal: amber phosphor CRT, 1980s institutional paperwork.
+   Fixed palette on purpose -- it ignores Telegram's light/dark theme so the
+   terminal look survives either setting. */
 :root {
-  --bg: var(--tg-theme-bg-color, #ffffff);
-  --surface: var(--tg-theme-secondary-bg-color, #f2f2f7);
-  --text: var(--tg-theme-text-color, #0f0f0f);
-  --muted: var(--tg-theme-hint-color, #8a8a8e);
-  --accent: var(--tg-theme-button-color, #2481cc);
-  --accent-text: var(--tg-theme-button-text-color, #ffffff);
-  --danger: var(--tg-theme-destructive-text-color, #d9342b);
-  --radius: 14px;
+  --amber: #ffb02e;
+  --amber-dim: #c97e1c;
+  --amber-glow: rgba(255, 176, 46, 0.35);
+  --panel: #231a12;
+  --panel-raised: #2e2318;
+  --shell: #14100b;
+  --cream: #f0dfb8;
+  --danger: #e2502f;
+  --line: #5a452c;
+  --mono: 'Share Tech Mono', 'VT323', ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
 }
 
 * {
@@ -17,66 +20,129 @@
 
 body {
   margin: 0;
-  padding: 0 0 96px;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 0 0 104px;
+  background: var(--shell);
+  color: var(--cream);
+  font-family: var(--mono);
+  font-size: 16px;
+  line-height: 1.4;
   -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 0 6px var(--amber-glow);
+}
+
+/* Scanlines and a soft vignette over everything, pointer-transparent. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 [hidden] {
   display: none !important;
 }
 
+/* ---- gate ---- */
+
 .gate {
-  padding: 48px 24px;
+  padding: 64px 24px;
   text-align: center;
-  color: var(--muted);
+  color: var(--amber);
 }
 
+.gate h1 {
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+}
+
+.gate p {
+  color: var(--amber-dim);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* ---- header / docket ---- */
+
 .summary {
+  border-bottom: 2px solid var(--line);
+  background: var(--panel);
+  padding: 14px 16px 12px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 16px 12px;
+}
+
+.summary::before {
+  content: 'TIME VARIANCE AUTHORITY \2014  ASSET REGISTRY';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  color: var(--amber-dim);
+  background: var(--shell);
+  border-bottom: 1px solid var(--line);
+  padding: 4px 16px;
+}
+
+.summary {
+  position: relative;
+  padding-top: 34px;
+}
+
+.summary-label,
+.summary-count {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber-dim);
 }
 
 .summary-label {
   display: block;
-  font-size: 13px;
-  color: var(--muted);
+  margin-bottom: 2px;
 }
 
 .summary-value {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-size: 30px;
+  font-weight: 400;
+  color: var(--amber);
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px var(--amber-glow);
 }
 
-.summary-count {
-  font-size: 14px;
-  color: var(--muted);
-}
+/* ---- toolbar ---- */
 
 .toolbar {
   display: flex;
   gap: 8px;
-  padding: 0 16px 12px;
+  padding: 12px 16px;
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--bg);
+  background: var(--shell);
+  border-bottom: 1px solid var(--line);
 }
 
 .toolbar input,
 .toolbar select {
-  font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: none;
-  border-radius: 10px;
-  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--cream);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 9px 10px;
+  text-transform: uppercase;
 }
 
 .toolbar input {
@@ -84,92 +150,159 @@ body {
   min-width: 0;
 }
 
+.toolbar input::placeholder {
+  color: var(--amber-dim);
+  opacity: 0.8;
+}
+
+.toolbar input:focus,
+.toolbar select:focus,
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px var(--amber), 0 0 14px var(--amber-glow);
+}
+
+/* ---- dossier cards ---- */
+
 .items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-  padding: 0 16px;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
 }
 
 .card {
-  background: var(--surface);
-  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0;
   overflow: hidden;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.5);
 }
 
 .card:active {
-  opacity: 0.7;
+  border-color: var(--amber);
+  box-shadow: 0 0 16px var(--amber-glow);
 }
 
 .card-photo {
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  background: var(--bg);
   display: block;
+  background: var(--shell);
+  /* Sepia pass so photographs read as archive material. */
+  filter: sepia(0.45) saturate(0.85) contrast(1.08) brightness(0.95);
+  border-bottom: 1px solid var(--line);
+  image-rendering: auto;
 }
 
 .card-photo.placeholder {
   display: grid;
   place-items: center;
-  color: var(--muted);
-  font-size: 28px;
+  color: var(--amber-dim);
+  font-size: 11px;
+  letter-spacing: 2px;
+  filter: none;
+  text-align: center;
+  padding: 8px;
 }
 
 .card-body {
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
 }
 
 .card-title {
-  font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--cream);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .card-value {
-  font-size: 14px;
-  color: var(--muted);
-  margin-top: 2px;
+  font-size: 13px;
+  color: var(--amber);
+  margin-top: 3px;
+  letter-spacing: 1px;
 }
 
+/* ---- notices ---- */
+
 .empty,
-.error {
-  padding: 32px 24px;
+.error,
+.hint {
+  padding: 28px 24px;
   text-align: center;
-  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--amber-dim);
+  text-transform: uppercase;
 }
 
 .error {
   color: var(--danger);
   padding: 12px 16px;
+  border: 1px solid var(--danger);
+  margin: 0 16px;
+  background: rgba(226, 80, 47, 0.08);
 }
+
+.hint {
+  padding: 0;
+  text-align: left;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+/* ---- action button ---- */
 
 .fab {
   position: fixed;
-  right: 20px;
-  bottom: calc(24px + env(safe-area-inset-bottom));
-  width: 56px;
-  height: 56px;
-  border: none;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 30px;
-  line-height: 1;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+  right: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 10;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 14px 18px;
+  color: var(--shell);
+  background: var(--amber);
+  border: 1px solid var(--amber);
+  border-radius: 0;
   cursor: pointer;
+  box-shadow: 0 0 20px var(--amber-glow);
+  text-shadow: none;
+  font-weight: 700;
 }
+
+.fab:active {
+  background: var(--amber-dim);
+}
+
+/* ---- form sheet ---- */
 
 .editor {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(8, 6, 4, 0.82);
   display: flex;
   align-items: flex-end;
   overflow-y: auto;
@@ -177,101 +310,122 @@ body {
 
 .sheet {
   width: 100%;
-  background: var(--bg);
-  border-radius: 18px 18px 0 0;
-  padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
+  background: var(--panel-raised);
+  border-top: 2px solid var(--amber);
+  border-radius: 0;
+  padding: 16px 16px calc(22px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   max-height: 100vh;
   overflow-y: auto;
 }
 
 .sheet h2 {
   margin: 0;
-  font-size: 19px;
+  font-size: 13px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--amber);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
 }
 
 .photo-picker {
-  display: block;
-  background: var(--surface);
-  border-radius: var(--radius);
-  min-height: 180px;
   display: grid;
   place-items: center;
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  min-height: 150px;
   overflow: hidden;
   cursor: pointer;
 }
 
 .photo-picker img {
   width: 100%;
-  max-height: 320px;
+  max-height: 300px;
   object-fit: contain;
   display: block;
+  filter: sepia(0.35) saturate(0.9) contrast(1.05);
 }
 
 .photo-placeholder {
-  color: var(--muted);
-  font-size: 15px;
+  color: var(--amber-dim);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
   padding: 24px;
+  text-align: center;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .field > span {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber-dim);
 }
 
 .field input,
 .field textarea {
-  font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: none;
-  border-radius: 10px;
-  padding: 12px;
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--cream);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px;
   resize: vertical;
 }
 
 .actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 button.primary,
 button.secondary,
 button.danger {
   flex: 1;
-  font: inherit;
-  font-weight: 600;
-  border: none;
-  border-radius: 10px;
-  padding: 13px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 0;
+  padding: 13px 8px;
   cursor: pointer;
+  text-shadow: none;
 }
 
 button.primary {
-  background: var(--accent);
-  color: var(--accent-text);
+  background: var(--amber);
+  color: var(--shell);
+  border: 1px solid var(--amber);
+  font-weight: 700;
 }
 
 button.secondary {
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid var(--line);
 }
 
 button.danger {
   background: transparent;
   color: var(--danger);
+  border: 1px solid var(--danger);
+  flex: none;
 }
 
 button[disabled] {
-  opacity: 0.55;
+  opacity: 0.45;
   pointer-events: none;
 }
 
@@ -279,15 +433,18 @@ button[disabled] {
   align-self: flex-start;
   background: none;
   border: none;
+  border-bottom: 1px solid var(--danger);
   color: var(--danger);
-  font: inherit;
-  padding: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 0 0 1px;
   cursor: pointer;
 }
 
-.hint {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.5) 100%);
+  }
 }
-

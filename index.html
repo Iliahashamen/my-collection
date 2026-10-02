@@ -3,77 +3,82 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
-    <title>My Collection</title>
+    <meta name="color-scheme" content="dark" />
+    <title>TVA Asset Registry</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="gate" class="gate" hidden>
-      <h1>Open from Telegram</h1>
-      <p id="gate-message">Open this from the Telegram bot.</p>
+      <h1>Access Restricted</h1>
+      <p id="gate-message">Terminal must be opened through the authorised Telegram channel.</p>
     </div>
 
     <main id="app" hidden>
       <header class="summary">
         <div>
-          <span class="summary-label">Total value</span>
+          <span class="summary-label">Total assessed value</span>
           <strong id="total-value" class="summary-value">&mdash;</strong>
         </div>
-        <div class="summary-count"><span id="item-count">0</span> items</div>
+        <div class="summary-count"><span id="item-count">0</span> on file</div>
       </header>
 
       <div class="toolbar">
-        <input id="search" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search" />
-        <select id="sort" aria-label="Sort by">
+        <input id="search" type="search" placeholder="Search archive" autocomplete="off" enterkeyhint="search" />
+        <select id="sort" aria-label="Sort order">
           <option value="created">Newest</option>
-          <option value="value">Highest value</option>
-          <option value="title">Title A-Z</option>
+          <option value="value">Value</option>
+          <option value="title">A-Z</option>
         </select>
       </div>
 
       <section id="items" class="items"></section>
 
-      <p id="empty" class="empty" hidden>Nothing here yet. Tap <strong>+</strong> to add your first item.</p>
+      <p id="empty" class="empty" hidden>No assets on file. Use FILE ASSET to open a record.</p>
       <p id="list-error" class="error" hidden></p>
 
-      <button id="add" class="fab" type="button" aria-label="Add item">+</button>
+      <button id="add" class="fab" type="button">+ File asset</button>
     </main>
 
     <div id="editor" class="editor" hidden>
       <form id="editor-form" class="sheet">
-        <h2 id="editor-title">New item</h2>
+        <h2 id="editor-title">New asset record</h2>
 
         <label class="photo-picker">
           <input id="photo-input" type="file" accept="image/*" hidden />
           <img id="photo-preview" alt="" hidden />
-          <span id="photo-placeholder" class="photo-placeholder">Tap to add a photo</span>
+          <span id="photo-placeholder" class="photo-placeholder">Attach evidence image</span>
         </label>
         <p id="photo-note" class="hint" hidden></p>
-        <button id="remove-photo" class="link-button" type="button" hidden>Remove photo</button>
+        <button id="remove-photo" class="link-button" type="button" hidden>Detach image</button>
 
         <label class="field">
-          <span>Title</span>
+          <span>Designation</span>
           <input id="field-title" name="title" type="text" maxlength="120" required />
         </label>
 
         <label class="field">
-          <span>Value (<span class="currency-label"></span>)</span>
+          <span>Assessed value (<span class="currency-label"></span>)</span>
           <input id="field-value" name="value" type="text" inputmode="decimal" placeholder="0" />
         </label>
 
         <label class="field">
-          <span>Notes</span>
+          <span>Case notes</span>
           <textarea id="field-note" name="note" rows="3" maxlength="600"></textarea>
         </label>
 
         <p id="editor-error" class="error" hidden></p>
 
         <div class="actions">
-          <button id="save" class="primary" type="submit">Save</button>
-          <button id="cancel" class="secondary" type="button">Cancel</button>
+          <button id="save" class="primary" type="submit">Commit</button>
+          <button id="cancel" class="secondary" type="button">Dismiss</button>
         </div>
-        <button id="delete" class="danger" type="button" hidden>Delete item</button>
+        <button id="delete" class="danger" type="button" hidden>Prune record</button>
       </form>
     </div>
 
